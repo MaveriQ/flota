@@ -9,7 +9,7 @@ from sklearn.metrics import f1_score
 from torch import optim
 from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
-
+from morphpiece import MorphPieceBPE
 
 def main():
     random.seed(123)
@@ -24,6 +24,7 @@ def main():
     parser.add_argument('--n_epochs', default=None, type=int, required=True, help='Number of epochs.')
     parser.add_argument('--device', default=None, type=int, required=True, help='Selected CUDA device.')
     parser.add_argument('--base', default=False, action='store_true', help='Use base tokenization.')
+    parser.add_argument('--morph', default=False, action='store_true', help='Use MorphPiece.')
     parser.add_argument('--flota', default=False, action='store_true', help='Use FLOTA.')
     parser.add_argument('--first', default=False, action='store_true', help='Use FIRST.')
     parser.add_argument('--longest', default=False, action='store_true', help='Use LONGEST.')
@@ -60,6 +61,11 @@ def main():
         print('Using longest subwords...')
         filename += '_longest_{}'.format(args.k)
         tok = FlotaTokenizer(args.model, args.k, args.strict, 'longest')
+    elif args.morph:
+        print('Using MorphPiece...')
+        filename += '_morph_{}'.format(args.k)
+        tok = MorphPieceBPE()
+        tok.pad_token = tok.eos_token
     else:
         print('Using base tokenizer...')
         filename += '_base'
@@ -95,7 +101,7 @@ def main():
     device = torch.device('cuda:{}'.format(args.device) if torch.cuda.is_available() else 'cpu')
 
     model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=train_dataset.n_classes)
-    if args.model == 'gpt2':
+    if args.model in ['gpt2','maveriq/morphgpt-base-200k']:
         model.config.pad_token_id = model.config.eos_token_id
     model = model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
