@@ -1,8 +1,9 @@
 import argparse
 import random
-
+import os
 import pandas as pd
 import torch
+from tqdm import tqdm
 from data_helpers import *
 from flota import *
 from sklearn.metrics import f1_score
@@ -32,6 +33,8 @@ def main():
     parser.add_argument('--strict', default=False, action='store_true', help='Use strict FLOTA.')
     parser.add_argument('--noise', default=None, type=str, required=False, help='Type of noise.')
     parser.add_argument('--k', default=None, type=int, required=False, help='Number of subwords.')
+
+    tmp = "--batch_size 32 --n_epochs 20 --data arxiv_cs_1e+02 --morph --model maveriq/morphgpt-base-200k --lr 1e-4 --device 0".split()
     args = parser.parse_args()
 
     train = pd.read_csv('../data/{}_train.csv'.format(args.data))
@@ -47,7 +50,10 @@ def main():
     print('Batch size: {:02d}'.format(args.batch_size))
     print('Learning rate: {:.0e}'.format(args.lr))
 
-    filename = '{}_{}'.format(args.model, args.data)
+    os.makedirs('results', exist_ok=True)
+    filename = '{}_{}'.format(args.model.split('/')[1], args.data) if args.morph else '{}_{}'.format(args.model, args.data)
+    filename += '_bs{}'.format(args.batch_size)
+    filename += '_lr{}'.format(args.lr)
 
     if args.flota:
         print('Using FLOTA...')
@@ -62,9 +68,9 @@ def main():
         filename += '_longest_{}'.format(args.k)
         tok = FlotaTokenizer(args.model, args.k, args.strict, 'longest')
     elif args.morph:
+        args.base = True
         print('Using MorphPiece...')
-        filename += '_morph_{}'.format(args.k)
-        tok = MorphPieceBPE()
+        tok = MorphPieceBPE(model_max_length=512)
         tok.pad_token = tok.eos_token
     else:
         print('Using base tokenizer...')
@@ -109,7 +115,7 @@ def main():
     print('Train model...')
     for epoch in range(1, args.n_epochs + 1):
         model.train()
-        for i, (batch_tensors, labels) in enumerate(train_loader):
+        for (batch_tensors, labels) in tqdm(train_loader,total=len(train_loader)):
             input_ids = batch_tensors['input_ids'].to(device)
             attention_mask = batch_tensors['attention_mask'].to(device)
             labels = labels.to(device)
