@@ -100,7 +100,7 @@ def main():
 
     device = torch.device('cuda:{}'.format(args.device) if torch.cuda.is_available() else 'cpu')
 
-    model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=train_dataset.n_classes)
+    model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=train_dataset.n_classes, use_auth_token=True)
     if args.model in ['gpt2','maveriq/morphgpt-base-200k']:
         model.config.pad_token_id = model.config.eos_token_id
     model = model.to(device)
