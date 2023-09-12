@@ -1,10 +1,10 @@
 #!/bin/bash
-lr="1e-4"
+lr="3e-5"
 
 for data in arxiv_cs_1e+02 arxiv_maths_1e+02 arxiv_physics_1e+02 arxiv_cs_1e+03 arxiv_maths_1e+03 arxiv_physics_1e+03
 do
 	python -u main.py \
-	--batch_size 64 \
+	--batch_size 32 \
 	--n_epochs 20 \
 	--data $data \
 	--base \
@@ -16,11 +16,11 @@ done
 for data in arxiv_cs_1e+02 arxiv_maths_1e+02 arxiv_physics_1e+02 arxiv_cs_1e+03 arxiv_maths_1e+03 arxiv_physics_1e+03
 do
 	python -u main.py \
-	--batch_size 64 \
+	--batch_size 32 \
 	--n_epochs 20 \
 	--data $data \
 	--morph \
-	--model "maveriq/morphgpt-base-200k" \
+	--model "maveriq/morphgpt-base-100k" \
 	--lr $lr \
 	--device 0
 done
@@ -30,7 +30,7 @@ do
 	for data in arxiv_cs_1e+02 arxiv_maths_1e+02 arxiv_physics_1e+02 arxiv_cs_1e+03 arxiv_maths_1e+03 arxiv_physics_1e+03
 	do
 		python -u main.py \
-		--batch_size 64 \
+		--batch_size 32 \
 		--n_epochs 20 \
 		--data $data \
 		--flota \

@@ -20,6 +20,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', default=None, type=str, required=True, help='Name of model.')
     parser.add_argument('--data', default=None, type=str, required=True, help='Name of data.')
+    parser.add_argument('--output', default='results', type=str, help='Name of output dir')
     parser.add_argument('--batch_size', default=None, type=int, required=True, help='Batch size.')
     parser.add_argument('--lr', default=None, type=float, required=True, help='Learning rate.')
     parser.add_argument('--n_epochs', default=None, type=int, required=True, help='Number of epochs.')
@@ -34,7 +35,7 @@ def main():
     parser.add_argument('--noise', default=None, type=str, required=False, help='Type of noise.')
     parser.add_argument('--k', default=None, type=int, required=False, help='Number of subwords.')
 
-    tmp = "--batch_size 32 --n_epochs 20 --data arxiv_cs_1e+02 --morph --model maveriq/morphgpt-base-200k --lr 1e-4 --device 0".split()
+    tmp = "--batch_size 32 --n_epochs 20 --data arxiv_cs_1e+02 --morph --model maveriq/morphgpt-base-100k --lr 1e-4 --device 0".split()
     args = parser.parse_args()
 
     train = pd.read_csv('../data/{}_train.csv'.format(args.data))
@@ -50,10 +51,10 @@ def main():
     print('Batch size: {:02d}'.format(args.batch_size))
     print('Learning rate: {:.0e}'.format(args.lr))
 
-    os.makedirs('results', exist_ok=True)
+    os.makedirs(args.output, exist_ok=True)
     filename = '{}_{}'.format(args.model.split('/')[1], args.data) if args.morph else '{}_{}'.format(args.model, args.data)
-    filename += '_bs{}'.format(args.batch_size)
-    filename += '_lr{}'.format(args.lr)
+    # filename += '_bs{}'.format(args.batch_size)
+    # filename += '_lr{}'.format(args.lr)
 
     if args.flota:
         print('Using FLOTA...')
@@ -101,13 +102,14 @@ def main():
     dev_loader = DataLoader(dev_dataset, batch_size=args.batch_size, collate_fn=test_collator)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, collate_fn=test_collator)
 
-    best_f1, _, _, _ = get_best('results/{}.txt'.format(filename))
+    print(f'Filename is {filename}')
+    best_f1, _, _, _ = get_best(f'{args.output}/{filename}.txt')
     print('Best F1 so far: {}'.format(best_f1))
 
     device = torch.device('cuda:{}'.format(args.device) if torch.cuda.is_available() else 'cpu')
 
-    model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=train_dataset.n_classes)
-    if args.model in ['gpt2','maveriq/morphgpt-base-200k']:
+    model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=train_dataset.n_classes, use_auth_token=True)
+    if args.model in ['gpt2','maveriq/morphgpt-base-200k','maveriq/morphgpt-base-100k']:
         model.config.pad_token_id = model.config.eos_token_id
     model = model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -115,7 +117,7 @@ def main():
     print('Train model...')
     for epoch in range(1, args.n_epochs + 1):
         model.train()
-        for (batch_tensors, labels) in tqdm(train_loader,total=len(train_loader)):
+        for (batch_tensors, labels) in train_loader:#tqdm(train_loader,total=len(train_loader)):
             input_ids = batch_tensors['input_ids'].to(device)
             attention_mask = batch_tensors['attention_mask'].to(device)
             labels = labels.to(device)
@@ -157,7 +159,7 @@ def main():
 
         print(f1_dev, f1_test, args.lr, epoch)
 
-        with open('results/{}.txt'.format(filename), 'a+') as f:
+        with open(f'{args.output}/{filename}.txt', 'a+') as f:
             f.write('{:.4f}\t{:.4f}\t{:.0e}\t{:02d}\n'.format(f1_dev, f1_test, args.lr, epoch))
 
 
